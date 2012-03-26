@@ -51,7 +51,7 @@ uint32 Analyze_HOD(FILE *fp, const uint32 block_len);
 
 void ChangeEndian(uint32* value)
 {
-	DWORD* v = (DWORD *)value;
+	uDWORD* v = (uDWORD *)value;
 	uint8 temp;
 
 	// big endian -> little endian
@@ -375,7 +375,7 @@ uint32 Parse_MULT(FILE *fp, uint32 id, uint32 block_len)
 	uint32 nLods;
 	char mesh_name[80];
 	char joint_name[80];
-	DWORD dw;
+	uDWORD dw;
 
 	MESH_MULT mesh;
 	
@@ -556,7 +556,7 @@ uint32 Analyze_HOD(FILE *fp, const uint32 block_len)
 {
 	char id[5] = "    ";
 	uint32 u32_id, length, temp;
-	DWORD dw;
+	uDWORD dw;
 	uint32 length_processed = 0;
 
 	static char buf[100];

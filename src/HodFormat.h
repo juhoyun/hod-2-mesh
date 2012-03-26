@@ -16,7 +16,7 @@ typedef union
 {
 	unsigned char bytes[4];
 	unsigned int  dw;
-} DWORD;
+} uDWORD;
 
 typedef struct
 {

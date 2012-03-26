@@ -238,8 +238,8 @@ int WriteMaterial(const char* meshName)
 		Ogre::MaterialPtr ogremat = matMgr.create(matName, 
 			Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
 
-		ogremat->setAmbient(0.2, 0.2, 0.2);
-		ogremat->setDiffuse(0.8, 0.8, 0.8, 1);
+		ogremat->setAmbient(0.2f, 0.2f, 0.2f);
+		ogremat->setDiffuse(0.8f, 0.8f, 0.8f, 1);
 		//ogremat->setSpecular(,,, 1);
 		//ogremat->setShininess();
 
