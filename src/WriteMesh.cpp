@@ -221,6 +221,7 @@ void ReassembleData()
 int WriteMaterial(const char* meshName)
 {
 	Ogre::MaterialManager matMgr;
+	Ogre::LodStrategyManager lodMgr;
 	matMgr.initialise();
 	Ogre::MaterialSerializer matSer;
 
@@ -259,6 +260,7 @@ int WriteMaterial(const char* meshName)
 int WriteMeshData(const char* meshName)
 {
 	Ogre::DefaultHardwareBufferManager defHWBufMgr;
+	Ogre::LodStrategyManager lodMgr;
 	Ogre::MeshManager meshMgr;
 
 	Ogre::MeshPtr ogreMesh = Ogre::MeshManager::getSingleton().createManual(meshName,
