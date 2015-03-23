@@ -394,7 +394,7 @@ int WriteMeshData(const char* meshName)
 
 		// Now use Ogre's ability to reorganize the vertex buffers the best way
 		Ogre::VertexDeclaration* newDecl = 
-			ogreSubMesh->vertexData->vertexDeclaration->getAutoOrganisedDeclaration(false, false);
+			ogreSubMesh->vertexData->vertexDeclaration->getAutoOrganisedDeclaration(false, false, false);
 		Ogre::BufferUsageList bufferUsages;
 		for (size_t u = 0; u <= newDecl->getMaxSource(); ++u)
 			bufferUsages.push_back(Ogre::HardwareBuffer::HBU_STATIC_WRITE_ONLY);
