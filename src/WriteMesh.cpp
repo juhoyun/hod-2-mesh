@@ -103,7 +103,8 @@ void ConstructDDSHeader(MATERIAL_INFO& matInfo, DDSurfaceDesc* desc)
 
 	desc->format.size = 32;
 	desc->format.flags = 4;				// DDPF_FOURCC
-	desc->format.fourCC = 0x35545844;	// "DXT5"
+	//desc->format.fourCC = 0x35545844;	// "DXT5"
+	desc->format.fourCC = *(uint32 *)matInfo.type;
 
 	//desc->format.bpp;
 	//desc->format.redMask;
