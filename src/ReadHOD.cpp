@@ -203,13 +203,13 @@ uint32 Parse_STAT(FILE *fp, const uint32 block_len)
 
 void RemovePath(char* path)
 {
-	char* last_slash;
+	char* last_slash = path - 1;
 	char* str = path;
 	int length;
 
 	while(*str++)
 	{
-		if (*str == '/')
+		if (*str == '/' || *str == '\\')
 			last_slash = str;
 	}
 
@@ -247,6 +247,12 @@ uint32 Parse_LMIP(FILE *fp, uint32 block_len)
 	fread(&levels, 4, 1, fp);
 	Print("%s, levels=%d\n", type, levels);
 
+	std::string typeStr(type);
+	int shift_cnt = 0;
+
+	if (typeStr == "DXT1")
+		shift_cnt = 1;
+
 	strcpy_s(info.name, NAME_MAXLEN, filename);
 	strcpy_s(info.type, 5, type);
 	info.nMipmaps = levels;
@@ -261,17 +267,24 @@ uint32 Parse_LMIP(FILE *fp, uint32 block_len)
 		fread(&width, 4, 1, fp);
 		fread(&height, 4, 1, fp);
 
+		if (width > 0x2000 || height > 0x2000) {
+			Print("Invalid length: %d * %d\n", width, height);
+			length_processed = block_len;
+			break;
+		}
+
 		bitmap.width = width;
 		bitmap.height = height;
-		bitmap.data = new uint8[width * height];
+		size_t imgSize = (width * height) >> shift_cnt;
+		bitmap.data = new uint8[imgSize];
 
-		fread(bitmap.data, width * height, 1, fp);
+		fread(bitmap.data, imgSize, 1, fp);
 
 		info.vBitmaps.push_back(bitmap);
 		
-		Print("[%d] %d*%d\n", mipmap+1, width, height);
+		Print("[%d] %d*%d, %u bytes\n", mipmap+1, width, height, imgSize);
 
-		length_processed += 8 + width * height;
+		length_processed += 8 + imgSize;
 	}
 	DecIndent();
 	DecIndent();
@@ -283,17 +296,25 @@ uint32 Parse_LMIP(FILE *fp, uint32 block_len)
 
 typedef struct
 {
-	uint32		signature;	// 00 00 05 78
-	uint32		level;		// LOD level
+	uint32		signature;	// 00 00 05 78 (classic), 00 00 05 79 (remastered)
+	uint32		lod_level;	// LOD level
 	uint32		groups;		// Number of texture group
 } BMSH_HEADER;
 
 typedef struct
 {
 	uint32		mat_id;		// material ID
-	uint32		type;		// vertex type: 0x1B / 0x0B
+	uint32		type;		// vertex type: classic - 0x1B / 0x0B, remastered - 0x601f
 	uint32		vertices;	// number of vertices
 } MESH_HEADER;
+
+#define BMSH_SIG_HW2_CLASSIC	0x578
+#define BMSH_SIG_HW2_REMASTERED	0x579
+
+#define BMSH_MESH_TYPE_CLASSIC_1	0x1B
+#define BMSH_MESH_TYPE_CLASSIC_2	0xB
+#define BMSH_MESH_TYPE_REMASTERED_1	0x601F
+#define BMSH_MESH_TYPE_REMASTERED_2	0x600F
 
 uint32 Parse_BMSH(FILE *fp, uint32 block_len)
 {
@@ -308,10 +329,13 @@ uint32 Parse_BMSH(FILE *fp, uint32 block_len)
 	fread(&hdr, sizeof(hdr), 1, fp);
 	length_processed = sizeof(hdr);
 
-	Print("BMSH LOD %d, %d Texture Groups\n", 
-		hdr.level, hdr.groups);
+	ChangeEndian(&hdr.signature);
 
-	lodMesh.lodLevel = hdr.level;
+	Print("BMSH Sig 0x%X(%s), LOD %d, %d Texture Groups\n", 
+		hdr.signature, hdr.signature == BMSH_SIG_HW2_CLASSIC ? "HW2 CLASSIC" : "HW Remasterd",
+		hdr.lod_level, hdr.groups);
+
+	lodMesh.lodLevel = hdr.lod_level;
 	lodMesh.nGroups = hdr.groups;
 
 	IncIndent();
@@ -319,6 +343,7 @@ uint32 Parse_BMSH(FILE *fp, uint32 block_len)
 	for(group=0; group<hdr.groups; group++)
 	{
 		MESH mesh;
+		uint32 vertices_length = 0;
 
 		fread(&meshHdr, sizeof(meshHdr), 1, fp);
 		Print("[%d] Mat %d, Type 0x%02X, %d vertices\n",
@@ -328,13 +353,93 @@ uint32 Parse_BMSH(FILE *fp, uint32 block_len)
 		mesh.vType = meshHdr.type;
 		mesh.nVertices = meshHdr.vertices;
 
-		uint32 v;
-		for(v=0; v<meshHdr.vertices; ++v)
+		if (meshHdr.type == BMSH_MESH_TYPE_CLASSIC_1 || meshHdr.type == BMSH_MESH_TYPE_CLASSIC_2)
 		{
-			VERTEX vertex;
-			fread(&vertex, sizeof(vertex), 1, fp);
-			mesh.vVertices.push_back(vertex);
+			uint32 v;
+			for (v = 0; v<meshHdr.vertices; ++v)
+			{
+				VERTEX vertex;
+				fread(&vertex, sizeof(vertex), 1, fp);
+				mesh.vVertices.push_back(vertex);
+			}
+			vertices_length = sizeof(VERTEX);
 		}
+		else if (meshHdr.type == BMSH_MESH_TYPE_REMASTERED_1)
+		{
+			uint32 v;
+			for (v = 0; v<meshHdr.vertices; ++v)
+			{
+				VERTEX vertex;
+				VERTEX2 vertex2;
+				fread(&vertex2, sizeof(vertex2), 1, fp);
+
+				if (vertex2.rsv3 != 0xffffffff)
+				{
+					printf("BMSH: !0xffffffff\n");
+				}
+
+				vertex.x = vertex2.x;
+				vertex.y = vertex2.y;
+				vertex.z = vertex2.z;
+
+				vertex.nx = vertex2.nx;
+				vertex.ny = vertex2.ny;
+				vertex.nz = vertex2.nz;
+
+				vertex.u = vertex2.f[0];
+				vertex.v = vertex2.f[1];
+
+				mesh.vVertices.push_back(vertex);
+			}
+			vertices_length = sizeof(VERTEX2);
+		}
+		else if (meshHdr.type == BMSH_MESH_TYPE_REMASTERED_2)
+		{
+			uint32 v;
+			for (v = 0; v<meshHdr.vertices; ++v)
+			{
+				VERTEX vertex;
+				VERTEX3 vertex3;
+				fread(&vertex3, sizeof(vertex3), 1, fp);
+
+				if (vertex3.rsv3 != 0xffffffff)
+				{
+					printf("BMSH: !0xffffffff\n");
+				}
+
+				vertex.x = vertex3.x;
+				vertex.y = vertex3.y;
+				vertex.z = vertex3.z;
+
+				vertex.nx = vertex3.nx;
+				vertex.ny = vertex3.ny;
+				vertex.nz = vertex3.nz;
+
+				vertex.u = vertex3.f[0];
+				vertex.v = vertex3.f[1];
+
+				mesh.vVertices.push_back(vertex);
+			}
+			vertices_length = sizeof(VERTEX3);
+		}
+		else if (meshHdr.type == 3)
+		{
+			uint32 v;
+			for (v = 0; v < meshHdr.vertices; ++v)
+			{
+				VERTEX vertex;
+				fread(&vertex, sizeof(float)* 8, 1, fp);
+				vertex.u = vertex.v = 0;
+				mesh.vVertices.push_back(vertex);
+			}
+			vertices_length = sizeof(float)* 8;
+		}
+		else
+		{
+			// invalid case
+			printf("BMSH: unknown type: 0x%X\n", meshHdr.type);
+		}
+		
 
 		// now, handle face list
 		fread(&index_id, 2, 1, fp);
@@ -358,7 +463,7 @@ uint32 Parse_BMSH(FILE *fp, uint32 block_len)
 
 		lodMesh.vMeshes.push_back(mesh);
 
-		length_processed += sizeof(meshHdr) + meshHdr.vertices * 40 + 10 + index_length*2;
+		length_processed += sizeof(meshHdr) + meshHdr.vertices * vertices_length + 10 + index_length*2;
 	}
 	DecIndent();
 

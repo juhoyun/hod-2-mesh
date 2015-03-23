@@ -37,14 +37,37 @@ typedef struct
 	MATH::Matrix4 mat;
 } HIER_DATA;
 
+// Homeworld Classic - 0xB or 0x1B
 typedef struct
 {
 	float x, y, z;		// position
-	float rsv1;
+	float rsv1;			// 1.0
 	float nx, ny, nz;	// normal
-	float rsv2;
+	float rsv2;			// 1.0
 	float u, v;			// texture coord
 } VERTEX;
+
+// Homeworld Remastered - BMSH_MESH_TYPE_REMASTERED_1 0x601F
+typedef struct
+{
+	float x, y, z;		// position
+	float rsv1;			// 1.0
+	float nx, ny, nz;	// normal
+	float rsv2;			// 1.0
+	uint32 rsv3;		// all 0xff
+	float f[10];		// 10 floats
+} VERTEX2;
+
+// Homeworld Remastered - BMSH_MESH_TYPE_REMASTERED_2 0x600F
+typedef struct
+{
+	float x, y, z;		// position
+	float rsv1;			// 1.0
+	float nx, ny, nz;	// normal
+	float rsv2;			// 1.0
+	uint32 rsv3;		// all 0xff
+	float f[8];		// 10 floats
+} VERTEX3;
 
 typedef struct
 {
