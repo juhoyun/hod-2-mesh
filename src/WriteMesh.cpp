@@ -97,7 +97,12 @@ void ConstructDDSHeader(MATERIAL_INFO& matInfo, DDSurfaceDesc* desc)
 	desc->flags = 0x0A1007;
 	desc->height = matInfo.vBitmaps[0].height;
 	desc->width = matInfo.vBitmaps[0].width;
-	desc->pitch = desc->height * desc->width;
+
+	std::string strFourCC(matInfo.type);
+	if (strFourCC == "DXT1")
+		desc->pitch = desc->height * desc->width / 2;
+	else if (strFourCC == "DXT5")
+		desc->pitch = desc->height * desc->width;
 	//desc->depth = 0;
 	desc->mipMapLevels = matInfo.nMipmaps;
 
@@ -152,9 +157,12 @@ void ExtractTextures(MATERIAL* mat)
 	vector<BITMAP_DATA>::const_iterator end = matInfo.vBitmaps.end();
 	vector<BITMAP_DATA>::const_iterator itr = matInfo.vBitmaps.begin();
 
+	std::string strFourCC(matInfo.type);
+
 	for(; itr != end; ++itr)
 	{
-		fwrite(itr->data, itr->height * itr->width, 1, fp);
+		size_t dataSize = strFourCC == "DXT1" ? (itr->height * itr->width / 2) : (itr->height * itr->width);
+		fwrite(itr->data, dataSize, 1, fp);
 	}
 
 	fclose(fp);
