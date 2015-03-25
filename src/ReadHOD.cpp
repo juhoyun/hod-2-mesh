@@ -315,32 +315,34 @@ typedef struct
 #define BMSH_MESH_TYPE_CLASSIC_2	0xB
 #define BMSH_MESH_TYPE_REMASTERED_1	0x601F
 #define BMSH_MESH_TYPE_REMASTERED_2	0x600F
+#define BMSH_MESH_TYPE_REMASTERED_3	0x600B
+#define BMSH_MESH_TYPE_REMASTERED_4	0x601B
 
 uint32 Parse_BMSH(FILE *fp, uint32 block_len)
 {
 	uint32 group, length_processed;
-	BMSH_HEADER hdr;
+	BMSH_HEADER bmshHdr;
 	MESH_HEADER meshHdr;
 	uint16 index_id;
 	uint32 index_type, index_length;
 
 	LOD_MESH lodMesh;
 
-	fread(&hdr, sizeof(hdr), 1, fp);
-	length_processed = sizeof(hdr);
+	fread(&bmshHdr, sizeof(bmshHdr), 1, fp);
+	length_processed = sizeof(bmshHdr);
 
-	ChangeEndian(&hdr.signature);
+	ChangeEndian(&bmshHdr.signature);
 
 	Print("BMSH Sig 0x%X(%s), LOD %d, %d Texture Groups\n", 
-		hdr.signature, hdr.signature == BMSH_SIG_HW2_CLASSIC ? "HW2 CLASSIC" : "HW Remasterd",
-		hdr.lod_level, hdr.groups);
+		bmshHdr.signature, bmshHdr.signature == BMSH_SIG_HW2_CLASSIC ? "HW2 CLASSIC" : "HW Remasterd",
+		bmshHdr.lod_level, bmshHdr.groups);
 
-	lodMesh.lodLevel = hdr.lod_level;
-	lodMesh.nGroups = hdr.groups;
+	lodMesh.lodLevel = bmshHdr.lod_level;
+	lodMesh.nGroups = bmshHdr.groups;
 
 	IncIndent();
 
-	for(group=0; group<hdr.groups; group++)
+	for(group=0; group<bmshHdr.groups; group++)
 	{
 		MESH mesh;
 		uint32 vertices_length = 0;
@@ -386,8 +388,8 @@ uint32 Parse_BMSH(FILE *fp, uint32 block_len)
 				vertex.ny = vertex2.ny;
 				vertex.nz = vertex2.nz;
 
-				vertex.u = vertex2.f[0];
-				vertex.v = vertex2.f[1];
+				vertex.u = vertex2.u;
+				vertex.v = vertex2.v;
 
 				mesh.vVertices.push_back(vertex);
 			}
@@ -421,6 +423,54 @@ uint32 Parse_BMSH(FILE *fp, uint32 block_len)
 				mesh.vVertices.push_back(vertex);
 			}
 			vertices_length = sizeof(VERTEX3);
+		}
+		else if (meshHdr.type == BMSH_MESH_TYPE_REMASTERED_3)
+		{
+			uint32 v;
+			float vbuf[16];
+			for (v = 0; v < meshHdr.vertices; ++v)
+			{
+				fread(vbuf, sizeof(vbuf), 1, fp);
+				VERTEX vtx;
+
+				vtx.x = vbuf[0];
+				vtx.y = vbuf[1];
+				vtx.z = vbuf[2];
+
+				vtx.nx = vbuf[4];
+				vtx.ny = vbuf[5];
+				vtx.nz = vbuf[6];
+
+				vtx.u = vbuf[8];
+				vtx.v = vbuf[9];
+
+				mesh.vVertices.push_back(vtx);
+			}
+			vertices_length = sizeof(vbuf);
+		}
+		else if (meshHdr.type == BMSH_MESH_TYPE_REMASTERED_4)
+		{
+			uint32 v;
+			float vbuf[18];
+			for (v = 0; v < meshHdr.vertices; ++v)
+			{
+				fread(vbuf, sizeof(vbuf), 1, fp);
+				VERTEX vtx;
+
+				vtx.x = vbuf[0];
+				vtx.y = vbuf[1];
+				vtx.z = vbuf[2];
+
+				vtx.nx = vbuf[4];
+				vtx.ny = vbuf[5];
+				vtx.nz = vbuf[6];
+
+				vtx.u = vbuf[8];
+				vtx.v = vbuf[9];
+
+				mesh.vVertices.push_back(vtx);
+			}
+			vertices_length = sizeof(vbuf);
 		}
 		else if (meshHdr.type == 3)
 		{

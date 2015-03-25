@@ -50,12 +50,13 @@ typedef struct
 // Homeworld Remastered - BMSH_MESH_TYPE_REMASTERED_1 0x601F
 typedef struct
 {
-	float x, y, z;		// position
+	float x, y, z;		// position - bit0
 	float rsv1;			// 1.0
-	float nx, ny, nz;	// normal
+	float nx, ny, nz;	// normal - bit1
 	float rsv2;			// 1.0
-	uint32 rsv3;		// all 0xff
-	float f[10];		// 10 floats
+	uint32 rsv3;		// all 0xff - bit2
+	float u, v;			// texcoord - bit4 (?)
+	float f[8];			// 8 floats - bit13, 14(?)
 } VERTEX2;
 
 // Homeworld Remastered - BMSH_MESH_TYPE_REMASTERED_2 0x600F
@@ -66,7 +67,7 @@ typedef struct
 	float nx, ny, nz;	// normal
 	float rsv2;			// 1.0
 	uint32 rsv3;		// all 0xff
-	float f[8];		// 10 floats
+	float f[8];			// 8 floats
 } VERTEX3;
 
 typedef struct
